@@ -1,5 +1,5 @@
 use bevy_app::{Plugin, PostUpdate};
-use bevy_color::{Alpha, Color};
+use bevy_color::Color;
 use bevy_ecs::{
     component::Component,
     hierarchy::Children,

@@ -1,5 +1,5 @@
 use bevy_app::{Plugin, PreUpdate};
-use bevy_color::{Alpha, Color, Hsla, Okhsla};
+use bevy_color::{Color, Hsla, Okhsla};
 use bevy_ecs::{
     change_detection::DetectChangesMut,
     component::Component,

@@ -17,7 +17,12 @@ use bevy::{
 #[path = "../../helpers/theme.rs"]
 mod theme;
 
-const PALETTE: [&str; 4] = ["27496D", "466B7A", "669DB3", "ADCBE3"];
+const PALETTE: [Color; 4] = [
+    Color::from_hex_or_panic("27496D"),
+    Color::from_hex_or_panic("466B7A"),
+    Color::from_hex_or_panic("669DB3"),
+    Color::from_hex_or_panic("ADCBE3"),
+];
 const HIDDEN_COLOR: Color = Color::srgb(1.0, 0.7, 0.7);
 
 fn main() {
@@ -98,8 +103,6 @@ impl TargetUpdate<NodeVisibilitySetting> for Target<NodeVisibilitySetting> {
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let palette: [Color; 4] = PALETTE.map(|hex| Srgba::hex(hex).unwrap().into());
-
     let text_font = TextFont {
         font: asset_server.load("fonts/FiraSans-Bold.ttf").into(),
         ..default()
@@ -107,7 +110,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     commands.spawn(Camera2d);
 
-    let panels_child = commands.spawn_scene(panels(&palette)).id();
+    let panels_child = commands.spawn_scene(panels(&PALETTE)).id();
 
     commands
         .spawn((

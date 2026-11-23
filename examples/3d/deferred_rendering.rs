@@ -171,7 +171,7 @@ fn setup(
     commands.spawn((
         Mesh3d(meshes.add(Cuboid::new(2.0, 1.0, 1.0))),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Srgba::hex("888888").unwrap().into(),
+            base_color: Color::from_hex_or_panic("888888"),
             unlit: true,
             cull_mode: None,
             ..default()

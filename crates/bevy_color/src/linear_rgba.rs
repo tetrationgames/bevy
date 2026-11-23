@@ -1,6 +1,6 @@
 use crate::{
-    color_difference::EuclideanDistance, impl_componentwise_vector_space, Alpha, ColorToComponents,
-    ColorToPacked, Gray, Luminance, Mix, StandardColor,
+    color_difference::EuclideanDistance, impl_componentwise_vector_space, impl_const_color_ops,
+    ColorToComponents, ColorToPacked, Gray, Luminance, Mix, StandardColor,
 };
 use bevy_math::{ops, Vec3, Vec4};
 #[cfg(feature = "bevy_reflect")]
@@ -40,6 +40,8 @@ pub struct LinearRgba {
 impl StandardColor for LinearRgba {}
 
 impl_componentwise_vector_space!(LinearRgba, [red, green, blue, alpha]);
+
+impl_const_color_ops!(LinearRgba, [red, green, blue]);
 
 impl LinearRgba {
     /// A fully black color with full alpha.
@@ -212,39 +214,9 @@ impl Luminance for LinearRgba {
     }
 }
 
-impl Mix for LinearRgba {
-    #[inline]
-    fn mix(&self, other: &Self, factor: f32) -> Self {
-        let n_factor = 1.0 - factor;
-        Self {
-            red: self.red * n_factor + other.red * factor,
-            green: self.green * n_factor + other.green * factor,
-            blue: self.blue * n_factor + other.blue * factor,
-            alpha: self.alpha * n_factor + other.alpha * factor,
-        }
-    }
-}
-
 impl Gray for LinearRgba {
     const BLACK: Self = Self::BLACK;
     const WHITE: Self = Self::WHITE;
-}
-
-impl Alpha for LinearRgba {
-    #[inline]
-    fn with_alpha(&self, alpha: f32) -> Self {
-        Self { alpha, ..*self }
-    }
-
-    #[inline]
-    fn alpha(&self) -> f32 {
-        self.alpha
-    }
-
-    #[inline]
-    fn set_alpha(&mut self, alpha: f32) {
-        self.alpha = alpha;
-    }
 }
 
 impl EuclideanDistance for LinearRgba {

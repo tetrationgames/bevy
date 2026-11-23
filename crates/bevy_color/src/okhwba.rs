@@ -1,6 +1,6 @@
 use crate::{
-    okhsva::Okhsva, Alpha, ColorToComponents, Gray, Hsla, Hsva, Hue, Hwba, Laba, Lcha, LinearRgba,
-    Mix, Okhsla, Oklaba, Oklcha, Srgba, StandardColor, Xyza,
+    impl_const_color_ops, okhsva::Okhsva, ColorToComponents, Gray, Hsla, Hsva, Hwba, Laba, Lcha,
+    LinearRgba, Okhsla, Oklaba, Oklcha, Srgba, StandardColor, Xyza,
 };
 use bevy_math::{Vec3, Vec4};
 #[cfg(feature = "bevy_reflect")]
@@ -35,6 +35,8 @@ pub struct Okhwba {
 }
 
 impl StandardColor for Okhwba {}
+
+impl_const_color_ops!(Okhwba, [whiteness, blackness], hue);
 
 impl Okhwba {
     /// Construct a new [`Okhwba`] color from components.
@@ -82,56 +84,9 @@ impl Default for Okhwba {
     }
 }
 
-impl Mix for Okhwba {
-    #[inline]
-    fn mix(&self, other: &Self, factor: f32) -> Self {
-        let n_factor = 1.0 - factor;
-        Self {
-            hue: crate::color_ops::lerp_hue(self.hue, other.hue, factor),
-            whiteness: self.whiteness * n_factor + other.whiteness * factor,
-            blackness: self.blackness * n_factor + other.blackness * factor,
-            alpha: self.alpha * n_factor + other.alpha * factor,
-        }
-    }
-}
-
 impl Gray for Okhwba {
     const BLACK: Self = Self::new(0., 0., 1., 1.);
     const WHITE: Self = Self::new(0., 1., 0., 1.);
-}
-
-impl Alpha for Okhwba {
-    #[inline]
-    fn with_alpha(&self, alpha: f32) -> Self {
-        Self { alpha, ..*self }
-    }
-
-    #[inline]
-    fn alpha(&self) -> f32 {
-        self.alpha
-    }
-
-    #[inline]
-    fn set_alpha(&mut self, alpha: f32) {
-        self.alpha = alpha;
-    }
-}
-
-impl Hue for Okhwba {
-    #[inline]
-    fn with_hue(&self, hue: f32) -> Self {
-        Self { hue, ..*self }
-    }
-
-    #[inline]
-    fn hue(&self) -> f32 {
-        self.hue
-    }
-
-    #[inline]
-    fn set_hue(&mut self, hue: f32) {
-        self.hue = hue;
-    }
 }
 
 impl ColorToComponents for Okhwba {

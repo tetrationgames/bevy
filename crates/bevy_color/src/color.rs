@@ -1,7 +1,7 @@
 use crate::{
     color_difference::EuclideanDistance, okhsla::Okhsla, okhsva::Okhsva, okhwba::Okhwba, Alpha,
-    Hsla, Hsva, Hue, Hwba, Laba, Lcha, LinearRgba, Luminance, Mix, Oklaba, Oklcha, Saturation,
-    Srgba, StandardColor, Xyza,
+    HexColorError, Hsla, Hsva, Hue, Hwba, Laba, Lcha, LinearRgba, Luminance, Mix, Oklaba, Oklcha,
+    Saturation, Srgba, StandardColor, Xyza,
 };
 use bevy_math::{MismatchedUnitsError, TryStableInterpolate};
 #[cfg(feature = "bevy_reflect")]
@@ -237,6 +237,34 @@ impl Color {
             ((color >> 8) & 0xFF) as u8,
             (color & 0xFF) as u8,
         )
+    }
+
+    /// Creates a new [`Color`] object storing a [`Srgba`] color from a CSS-style
+    /// hexadecimal string, in a `const` context.
+    ///
+    /// Hexadecimal colors are sRGB, so the result is always [`Color::Srgba`]. Parsing is
+    /// delegated to [`Srgba::from_hex`], which owns the format.
+    #[inline]
+    pub const fn from_hex(hex: &str) -> Result<Self, HexColorError> {
+        match Srgba::from_hex(hex) {
+            Ok(color) => Ok(Self::Srgba(color)),
+            Err(error) => Err(error),
+        }
+    }
+
+    /// Creates a new [`Color`] object storing a [`Srgba`] color from a CSS-style
+    /// hexadecimal string, panicking on invalid input.
+    ///
+    /// In a `const` item, a malformed string fails the build with a const-evaluation error.
+    /// At runtime it panics, so prefer [`Color::from_hex`] for user-supplied input.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `hex` is not a valid CSS-style hexadecimal color, either because of its
+    /// length or because it contains an invalid character.
+    #[inline]
+    pub const fn from_hex_or_panic(hex: &str) -> Self {
+        Self::Srgba(Srgba::from_hex_or_panic(hex))
     }
 
     /// Creates a new [`Color`] object storing a [`LinearRgba`] color.
@@ -628,39 +656,34 @@ impl Color {
 
     /// A fully transparent [`Color::LinearRgba`] color with 0 red, green and blue.
     pub const NONE: Self = Self::linear_rgba(0., 0., 0., 0.);
-}
 
-impl Default for Color {
-    /// A fully white [`Color::LinearRgba`] color with an alpha of 1.0.
-    fn default() -> Self {
-        Color::WHITE
-    }
-}
-
-impl Alpha for Color {
-    fn with_alpha(&self, alpha: f32) -> Self {
-        let mut new = *self;
-
-        match &mut new {
-            Color::Srgba(x) => *x = x.with_alpha(alpha),
-            Color::LinearRgba(x) => *x = x.with_alpha(alpha),
-            Color::Hsla(x) => *x = x.with_alpha(alpha),
-            Color::Hsva(x) => *x = x.with_alpha(alpha),
-            Color::Hwba(x) => *x = x.with_alpha(alpha),
-            Color::Laba(x) => *x = x.with_alpha(alpha),
-            Color::Lcha(x) => *x = x.with_alpha(alpha),
-            Color::Oklaba(x) => *x = x.with_alpha(alpha),
-            Color::Oklcha(x) => *x = x.with_alpha(alpha),
-            Color::Xyza(x) => *x = x.with_alpha(alpha),
-            Color::Okhsla(x) => *x = x.with_alpha(alpha),
-            Color::Okhsva(x) => *x = x.with_alpha(alpha),
-            Color::Okhwba(x) => *x = x.with_alpha(alpha),
+    /// Return a new version of this color with the given alpha value.
+    ///
+    /// This is the `const` counterpart of [`Alpha::with_alpha`].
+    #[inline]
+    pub const fn with_alpha(&self, alpha: f32) -> Self {
+        match self {
+            Color::Srgba(x) => Color::Srgba(x.with_alpha(alpha)),
+            Color::LinearRgba(x) => Color::LinearRgba(x.with_alpha(alpha)),
+            Color::Hsla(x) => Color::Hsla(x.with_alpha(alpha)),
+            Color::Hsva(x) => Color::Hsva(x.with_alpha(alpha)),
+            Color::Hwba(x) => Color::Hwba(x.with_alpha(alpha)),
+            Color::Laba(x) => Color::Laba(x.with_alpha(alpha)),
+            Color::Lcha(x) => Color::Lcha(x.with_alpha(alpha)),
+            Color::Oklaba(x) => Color::Oklaba(x.with_alpha(alpha)),
+            Color::Oklcha(x) => Color::Oklcha(x.with_alpha(alpha)),
+            Color::Xyza(x) => Color::Xyza(x.with_alpha(alpha)),
+            Color::Okhsla(x) => Color::Okhsla(x.with_alpha(alpha)),
+            Color::Okhsva(x) => Color::Okhsva(x.with_alpha(alpha)),
+            Color::Okhwba(x) => Color::Okhwba(x.with_alpha(alpha)),
         }
-
-        new
     }
 
-    fn alpha(&self) -> f32 {
+    /// Return the alpha component of this color.
+    ///
+    /// This is the `const` counterpart of [`Alpha::alpha`].
+    #[inline]
+    pub const fn alpha(&self) -> f32 {
         match self {
             Color::Srgba(x) => x.alpha(),
             Color::LinearRgba(x) => x.alpha(),
@@ -676,6 +699,23 @@ impl Alpha for Color {
             Color::Okhsva(x) => x.alpha(),
             Color::Okhwba(x) => x.alpha(),
         }
+    }
+}
+
+impl Default for Color {
+    /// A fully white [`Color::LinearRgba`] color with an alpha of 1.0.
+    fn default() -> Self {
+        Color::WHITE
+    }
+}
+
+impl Alpha for Color {
+    fn with_alpha(&self, alpha: f32) -> Self {
+        Self::with_alpha(self, alpha)
+    }
+
+    fn alpha(&self) -> f32 {
+        Self::alpha(self)
     }
 
     fn set_alpha(&mut self, alpha: f32) {

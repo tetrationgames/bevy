@@ -85,6 +85,68 @@
 //! Please note that most often adding or subtracting colors is not what you may want.
 //! Please have a look at other operations like blending, lightening or mixing colors using e.g. [`Mix`] or [`Luminance`] instead.
 //!
+//! # Const Colors and Palettes
+//!
+//! Constructors ([`Srgba::new`], [`Oklcha::lch`], [`Color::srgb`], ...), channel setters
+//! ([`Oklcha::with_lightness`], [`Srgba::with_red`], ...), [`Alpha::with_alpha`],
+//! [`Alpha::alpha`], [`Hue::with_hue`], [`Hue::rotate_hue`], [`Mix::mix`],
+//! [`Srgba::from_hex`], and [`Color::from_hex`] have `const` inherent counterparts. A palette
+//! can therefore be built and combined entirely at compile time.
+//!
+//! ```
+//! use bevy_color::{Color, Oklcha, Srgba};
+//!
+//! struct Chrome;
+//!
+//! impl Chrome {
+//!     const PANEL: Oklcha = Oklcha::lch(0.06, 0.0, 260.0);
+//!     const TEXT: Color = Color::Oklcha(Self::PANEL.with_lightness(0.92));
+//!     const MUTED: Color = Color::Oklcha(Self::PANEL.with_lightness(0.72));
+//!     const DIM: Color = Color::Oklcha(Self::PANEL.with_lightness(0.72).with_alpha(0.6));
+//!     const ACCENT: Oklcha = Oklcha::lch(0.83, 0.12, 225.0);
+//!     const WARNING: Oklcha = Self::ACCENT.with_hue(90.0);
+//!     const HOVER: Oklcha = Self::ACCENT.rotate_hue(15.0);
+//!     const BETWEEN: Oklcha = Self::ACCENT.mix(&Self::WARNING, 0.5);
+//!     const OCEAN: Srgba = Srgba::from_hex_or_panic("#2d4a7a");
+//! }
+//!
+//! assert_eq!(Chrome::DIM.alpha(), 0.6);
+//! assert_eq!(Chrome::HOVER.hue, 240.0);
+//! assert_eq!(Chrome::BETWEEN.hue, 157.5);
+//! assert_eq!(Chrome::OCEAN, Srgba::rgb_u8(0x2d, 0x4a, 0x7a));
+//! ```
+//!
+//! ### What is not `const`
+//!
+//! Some operations cannot be `const` on stable Rust, or cannot be `const` without changing
+//! their signature:
+//!
+//! - **Space conversions** ([`From`]/[`Into`] impls, [`Color::to_linear`],
+//!   [`Color::to_srgba`]): `From` impls cannot be `const`, and the conversions themselves need
+//!   `powf` (sRGB gamma), `sqrt`/`cbrt` (Oklab, Lab), or `atan2`/`sin`/`cos` (Oklch, Lch).
+//! - **`Srgba::gamma_function` and `gamma_function_inverse`**: need `powf`.
+//! - **`Srgba::hex`**: generic over `AsRef<str>`, which cannot be used in a `const fn`. Use
+//!   [`Srgba::from_hex`], [`Color::from_hex`], or their `from_hex_or_panic` counterparts in a
+//!   `const` item, instead.
+//! - **Trait methods**: const trait impls are unstable, so `Alpha`, `Mix`, `Hue`,
+//!   `Luminance`, and `Saturation` methods are not `const` when called through the trait.
+//!   The color types provide `const` inherent counterparts for alpha, mixing, and both hue
+//!   mutations; call those from a `const` context. Space-specific channel setters
+//!   (`with_saturation`, `with_lightness`, ...) are `const` where the channel exists.
+//! - **`Color`'s conversion-backed methods** ([`Hue`] and [`Luminance`] for `Srgba` variants,
+//!   [`Mix`], [`Saturation`]): they dispatch through a conversion, so they inherit its
+//!   limitations.
+//! - **`ColorToComponents` and `ColorToPacked` accessors** (`to_f32_array`, `to_vec4`,
+//!   `to_u8_array`): pure field packing that could be `const`, but left as trait-only methods
+//!   to avoid shadowing every accessor. `to_u8_array` also needs `f32::round`, which is newer
+//!   than this crate's MSRV.
+//!
+//! Convert once at startup, or author palettes directly in the space the consumer needs (for
+//! example [`LinearRgba`] for shader uniforms). Hexadecimal colors are sRGB, so [`Srgba`] owns
+//! parsing and [`Color::from_hex`] wraps the result in [`Color::Srgba`]; turning one into
+//! [`LinearRgba`] needs `powf`, so shader-space palettes use `LinearRgba`'s own `const`
+//! constructors.
+//!
 //! # Example
 //!
 //! ```
@@ -116,6 +178,7 @@ mod interpolate;
 mod laba;
 mod lcha;
 mod linear_rgba;
+mod macros;
 mod okcolor_convert;
 mod okhsla;
 mod okhsva;
@@ -194,105 +257,4 @@ where
 {
 }
 
-macro_rules! impl_componentwise_vector_space {
-    ($ty: ident, [$($element: ident),+]) => {
-        impl core::ops::Add<Self> for $ty {
-            type Output = Self;
-
-            fn add(self, rhs: Self) -> Self::Output {
-                Self::Output {
-                    $($element: self.$element + rhs.$element,)+
-                }
-            }
-        }
-
-        impl core::ops::AddAssign<Self> for $ty {
-            fn add_assign(&mut self, rhs: Self) {
-                *self = *self + rhs;
-            }
-        }
-
-        impl core::ops::Neg for $ty {
-            type Output = Self;
-
-            fn neg(self) -> Self::Output {
-                Self::Output {
-                    $($element: -self.$element,)+
-                }
-            }
-        }
-
-        impl core::ops::Sub<Self> for $ty {
-            type Output = Self;
-
-            fn sub(self, rhs: Self) -> Self::Output {
-                Self::Output {
-                    $($element: self.$element - rhs.$element,)+
-                }
-            }
-        }
-
-        impl core::ops::SubAssign<Self> for $ty {
-            fn sub_assign(&mut self, rhs: Self) {
-                *self = *self - rhs;
-            }
-        }
-
-        impl core::ops::Mul<f32> for $ty {
-            type Output = Self;
-
-            fn mul(self, rhs: f32) -> Self::Output {
-                Self::Output {
-                    $($element: self.$element * rhs,)+
-                }
-            }
-        }
-
-        impl core::ops::Mul<$ty> for f32 {
-            type Output = $ty;
-
-            fn mul(self, rhs: $ty) -> Self::Output {
-                Self::Output {
-                    $($element: self * rhs.$element,)+
-                }
-            }
-        }
-
-        impl core::ops::MulAssign<f32> for $ty {
-            fn mul_assign(&mut self, rhs: f32) {
-                *self = *self * rhs;
-            }
-        }
-
-        impl core::ops::Div<f32> for $ty {
-            type Output = Self;
-
-            fn div(self, rhs: f32) -> Self::Output {
-                Self::Output {
-                    $($element: self.$element / rhs,)+
-                }
-            }
-        }
-
-        impl core::ops::DivAssign<f32> for $ty {
-            fn div_assign(&mut self, rhs: f32) {
-                *self = *self / rhs;
-            }
-        }
-
-        impl bevy_math::VectorSpace for $ty {
-            type Scalar = f32;
-            const ZERO: Self = Self {
-                $($element: 0.0,)+
-            };
-        }
-
-        impl bevy_math::StableInterpolate for $ty {
-            fn interpolate_stable(&self, other: &Self, t: f32) -> Self {
-                bevy_math::VectorSpace::lerp(*self, *other, t)
-            }
-        }
-    };
-}
-
-pub(crate) use impl_componentwise_vector_space;
+pub(crate) use macros::{impl_componentwise_vector_space, impl_const_color_ops};

@@ -2,7 +2,7 @@ use alloc::sync::Arc;
 
 use bevy_app::{Plugin, PostUpdate};
 use bevy_camera::visibility::Visibility;
-use bevy_color::{Alpha, Color, Hsla, Srgba};
+use bevy_color::{Color, Hsla, Srgba};
 use bevy_ecs::{
     change_detection::{DetectChanges, DetectChangesMut},
     component::Component,

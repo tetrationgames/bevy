@@ -1,7 +1,7 @@
 use alloc::sync::Arc;
 use bevy_app::{Plugin, PreUpdate, Propagate};
 use bevy_camera::visibility::Visibility;
-use bevy_color::{Alpha, Srgba};
+use bevy_color::Srgba;
 use bevy_ecs::{
     change_detection::DetectChanges,
     entity::Entity,

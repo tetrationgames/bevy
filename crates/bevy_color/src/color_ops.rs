@@ -1,4 +1,4 @@
-use bevy_math::{ops, Vec3, Vec4};
+use bevy_math::{Vec3, Vec4};
 
 /// Methods for changing the luminance of a color. Note that these methods are not
 /// guaranteed to produce consistent results across color spaces,
@@ -105,8 +105,7 @@ pub trait Hue: Sized {
 
     /// Return a new version of this color with the hue channel rotated by the given degrees.
     fn rotate_hue(&self, degrees: f32) -> Self {
-        let rotated_hue = ops::rem_euclid(self.hue() + degrees, 360.);
-        self.with_hue(rotated_hue)
+        self.with_hue(rotate_hue(self.hue(), degrees))
     }
 }
 
@@ -160,9 +159,35 @@ pub trait ColorToPacked {
 /// Utility function for interpolating hue values. This ensures that the interpolation
 /// takes the shortest path around the color wheel, and that the result is always between
 /// 0 and 360.
-pub(crate) fn lerp_hue(a: f32, b: f32, t: f32) -> f32 {
-    let diff = ops::rem_euclid(b - a + 180.0, 360.) - 180.;
-    ops::rem_euclid(a + diff * t, 360.)
+#[inline]
+pub(crate) const fn lerp_hue(a: f32, b: f32, t: f32) -> f32 {
+    let diff = rem_euclid(b - a + 180.0, 360.) - 180.;
+    rem_euclid(a + diff * t, 360.)
+}
+
+/// Rotate `hue` by `degrees`, wrapping the result into `[0, 360)`.
+///
+/// `const` counterpart of the [`Hue::rotate_hue`] default body.
+#[inline]
+pub(crate) const fn rotate_hue(hue: f32, degrees: f32) -> f32 {
+    rem_euclid(hue + degrees, 360.0)
+}
+
+/// [`f32::rem_euclid`], reimplemented because that method is not `const`.
+///
+/// The inherent method has been stable since 1.38 but is still not `const` (Rust 1.102);
+/// the unstable `core::f32::math::rem_euclid` is not `const` either. Replace this shim
+/// once std constifies the method.
+///
+/// Identical for every finite input, and propagates NaN like the standard library.
+#[inline]
+const fn rem_euclid(value: f32, modulus: f32) -> f32 {
+    let remainder = value % modulus;
+    if remainder < 0.0 {
+        remainder + modulus.abs()
+    } else {
+        remainder
+    }
 }
 
 #[cfg(test)]
@@ -175,6 +200,7 @@ mod tests {
     #[test]
     fn test_rotate_hue() {
         let hsla = Hsla::hsl(180.0, 1.0, 0.5);
+        // Inherent `const` counterpart.
         assert_eq!(hsla.rotate_hue(90.0), Hsla::hsl(270.0, 1.0, 0.5));
         assert_eq!(hsla.rotate_hue(-90.0), Hsla::hsl(90.0, 1.0, 0.5));
         assert_eq!(hsla.rotate_hue(180.0), Hsla::hsl(0.0, 1.0, 0.5));
@@ -182,6 +208,14 @@ mod tests {
         assert_eq!(hsla.rotate_hue(0.0), hsla);
         assert_eq!(hsla.rotate_hue(360.0), hsla);
         assert_eq!(hsla.rotate_hue(-360.0), hsla);
+
+        // Trait default, kept for implementors that don't provide an inherent method.
+        assert_eq!(Hue::rotate_hue(&hsla, 90.0), Hsla::hsl(270.0, 1.0, 0.5));
+        assert_eq!(Hue::rotate_hue(&hsla, -90.0), Hsla::hsl(90.0, 1.0, 0.5));
+
+        // Usable in a `const` item.
+        const ROTATED: Hsla = Hsla::new(180., 1., 0.5, 1.).rotate_hue(90.0);
+        assert_eq!(ROTATED, Hsla::hsl(270.0, 1.0, 0.5));
     }
 
     #[test]

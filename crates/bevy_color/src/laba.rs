@@ -1,6 +1,6 @@
 use crate::{
-    impl_componentwise_vector_space, Alpha, ColorToComponents, Gray, Hsla, Hsva, Hwba, LinearRgba,
-    Luminance, Mix, Oklaba, Srgba, StandardColor, Xyza,
+    impl_componentwise_vector_space, impl_const_color_ops, ColorToComponents, Gray, Hsla, Hsva,
+    Hwba, LinearRgba, Luminance, Oklaba, Srgba, StandardColor, Xyza,
 };
 use bevy_math::{ops, Vec3, Vec4};
 #[cfg(feature = "bevy_reflect")]
@@ -36,6 +36,8 @@ pub struct Laba {
 impl StandardColor for Laba {}
 
 impl_componentwise_vector_space!(Laba, [lightness, a, b, alpha]);
+
+impl_const_color_ops!(Laba, [lightness, a, b]);
 
 impl Laba {
     /// Construct a new [`Laba`] color from components.
@@ -93,39 +95,9 @@ impl Default for Laba {
     }
 }
 
-impl Mix for Laba {
-    #[inline]
-    fn mix(&self, other: &Self, factor: f32) -> Self {
-        let n_factor = 1.0 - factor;
-        Self {
-            lightness: self.lightness * n_factor + other.lightness * factor,
-            a: self.a * n_factor + other.a * factor,
-            b: self.b * n_factor + other.b * factor,
-            alpha: self.alpha * n_factor + other.alpha * factor,
-        }
-    }
-}
-
 impl Gray for Laba {
     const BLACK: Self = Self::new(0., 0., 0., 1.);
     const WHITE: Self = Self::new(1., 0., 0., 1.);
-}
-
-impl Alpha for Laba {
-    #[inline]
-    fn with_alpha(&self, alpha: f32) -> Self {
-        Self { alpha, ..*self }
-    }
-
-    #[inline]
-    fn alpha(&self) -> f32 {
-        self.alpha
-    }
-
-    #[inline]
-    fn set_alpha(&mut self, alpha: f32) {
-        self.alpha = alpha;
-    }
 }
 
 impl Luminance for Laba {

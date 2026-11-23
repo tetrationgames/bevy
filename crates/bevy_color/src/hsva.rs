@@ -1,5 +1,5 @@
 use crate::{
-    Alpha, ColorToComponents, Gray, Hue, Hwba, Lcha, LinearRgba, Mix, Saturation, Srgba,
+    impl_const_color_ops, ColorToComponents, Gray, Hwba, Lcha, LinearRgba, Saturation, Srgba,
     StandardColor, Xyza,
 };
 use bevy_math::{Vec3, Vec4};
@@ -35,6 +35,8 @@ pub struct Hsva {
 }
 
 impl StandardColor for Hsva {}
+
+impl_const_color_ops!(Hsva, [saturation, value], hue);
 
 impl Hsva {
     /// Construct a new [`Hsva`] color from components.
@@ -82,56 +84,9 @@ impl Default for Hsva {
     }
 }
 
-impl Mix for Hsva {
-    #[inline]
-    fn mix(&self, other: &Self, factor: f32) -> Self {
-        let n_factor = 1.0 - factor;
-        Self {
-            hue: crate::color_ops::lerp_hue(self.hue, other.hue, factor),
-            saturation: self.saturation * n_factor + other.saturation * factor,
-            value: self.value * n_factor + other.value * factor,
-            alpha: self.alpha * n_factor + other.alpha * factor,
-        }
-    }
-}
-
 impl Gray for Hsva {
     const BLACK: Self = Self::new(0., 0., 0., 1.);
     const WHITE: Self = Self::new(0., 0., 1., 1.);
-}
-
-impl Alpha for Hsva {
-    #[inline]
-    fn with_alpha(&self, alpha: f32) -> Self {
-        Self { alpha, ..*self }
-    }
-
-    #[inline]
-    fn alpha(&self) -> f32 {
-        self.alpha
-    }
-
-    #[inline]
-    fn set_alpha(&mut self, alpha: f32) {
-        self.alpha = alpha;
-    }
-}
-
-impl Hue for Hsva {
-    #[inline]
-    fn with_hue(&self, hue: f32) -> Self {
-        Self { hue, ..*self }
-    }
-
-    #[inline]
-    fn hue(&self) -> f32 {
-        self.hue
-    }
-
-    #[inline]
-    fn set_hue(&mut self, hue: f32) {
-        self.hue = hue;
-    }
 }
 
 impl Saturation for Hsva {

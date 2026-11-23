@@ -1,5 +1,5 @@
 use bevy_app::Propagate;
-use bevy_color::{Alpha, Srgba};
+use bevy_color::Srgba;
 use bevy_ecs::{
     event::EntityEvent, hierarchy::Children, observer::On, reflect::ReflectComponent,
     system::Commands,

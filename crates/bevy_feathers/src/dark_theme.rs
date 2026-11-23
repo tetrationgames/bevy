@@ -4,7 +4,7 @@ use crate::{
     theme::SurfaceLevel,
     tokens::{self, semantic},
 };
-use bevy_color::{Alpha, Color, Luminance};
+use bevy_color::{Color, Luminance};
 use bevy_platform::collections::HashMap;
 
 use crate::theme::ThemeProps;

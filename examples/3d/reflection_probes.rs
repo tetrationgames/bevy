@@ -143,7 +143,7 @@ fn spawn_sphere(
     commands.spawn((
         Mesh3d(sphere_mesh.clone()),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Srgba::hex("#ffffff").unwrap().into(),
+            base_color: Color::from_hex_or_panic("#ffffff"),
             metallic: 1.0,
             perceptual_roughness: app_status.sphere_roughness,
             ..StandardMaterial::default()

@@ -77,11 +77,11 @@ fn setup(
             MeshletMesh3d(meshlet_mesh_handle.clone()),
             MeshMaterial3d(standard_materials.add(StandardMaterial {
                 base_color: match x {
-                    -2 => Srgba::hex("#dc2626").unwrap().into(),
-                    -1 => Srgba::hex("#ea580c").unwrap().into(),
-                    0 => Srgba::hex("#facc15").unwrap().into(),
-                    1 => Srgba::hex("#16a34a").unwrap().into(),
-                    2 => Srgba::hex("#0284c7").unwrap().into(),
+                    -2 => Color::from_hex_or_panic("#dc2626"),
+                    -1 => Color::from_hex_or_panic("#ea580c"),
+                    0 => Color::from_hex_or_panic("#facc15"),
+                    1 => Color::from_hex_or_panic("#16a34a"),
+                    2 => Color::from_hex_or_panic("#0284c7"),
                     _ => unreachable!(),
                 },
                 perceptual_roughness: (x + 2) as f32 / 4.0,

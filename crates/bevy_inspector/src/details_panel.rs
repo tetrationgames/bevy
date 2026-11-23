@@ -12,8 +12,8 @@ use alloc::{
 use bevy_annotations::{DisplayName, ReadOnly, Step, Unit, ValueRange};
 use bevy_app::Propagate;
 use bevy_color::{
-    Alpha, Color, ColorToComponents, Hsla, Hsva, Hwba, Laba, Lcha, LinearRgba, Okhsla, Okhsva,
-    Okhwba, Oklaba, Oklcha, Srgba, Xyza,
+    Color, ColorToComponents, Hsla, Hsva, Hwba, Laba, Lcha, LinearRgba, Okhsla, Okhsva, Okhwba,
+    Oklaba, Oklcha, Srgba, Xyza,
 };
 use bevy_dev_tools::inspection::{
     component_inspection::{ComponentDetailLevel, ComponentInspectionSettings},

@@ -1,6 +1,6 @@
 use crate::{
-    impl_componentwise_vector_space, Alpha, ColorToComponents, Gray, LinearRgba, Luminance, Mix,
-    StandardColor,
+    impl_componentwise_vector_space, impl_const_color_ops, ColorToComponents, Gray, LinearRgba,
+    Luminance, StandardColor,
 };
 use bevy_math::{Vec3, Vec4};
 #[cfg(feature = "bevy_reflect")]
@@ -38,6 +38,8 @@ pub struct Xyza {
 impl StandardColor for Xyza {}
 
 impl_componentwise_vector_space!(Xyza, [x, y, z, alpha]);
+
+impl_const_color_ops!(Xyza, [x, y, z]);
 
 impl Xyza {
     /// Construct a new [`Xyza`] color from components.
@@ -93,23 +95,6 @@ impl Default for Xyza {
     }
 }
 
-impl Alpha for Xyza {
-    #[inline]
-    fn with_alpha(&self, alpha: f32) -> Self {
-        Self { alpha, ..*self }
-    }
-
-    #[inline]
-    fn alpha(&self) -> f32 {
-        self.alpha
-    }
-
-    #[inline]
-    fn set_alpha(&mut self, alpha: f32) {
-        self.alpha = alpha;
-    }
-}
-
 impl Luminance for Xyza {
     #[inline]
     fn with_luminance(&self, lightness: f32) -> Self {
@@ -134,19 +119,6 @@ impl Luminance for Xyza {
         Self {
             y: (self.y + amount).min(1.),
             ..*self
-        }
-    }
-}
-
-impl Mix for Xyza {
-    #[inline]
-    fn mix(&self, other: &Self, factor: f32) -> Self {
-        let n_factor = 1.0 - factor;
-        Self {
-            x: self.x * n_factor + other.x * factor,
-            y: self.y * n_factor + other.y * factor,
-            z: self.z * n_factor + other.z * factor,
-            alpha: self.alpha * n_factor + other.alpha * factor,
         }
     }
 }

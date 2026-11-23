@@ -1,6 +1,6 @@
 use crate::{
-    color_difference::EuclideanDistance, impl_componentwise_vector_space, Alpha, ColorToComponents,
-    ColorToPacked, Gray, LinearRgba, Luminance, Mix, StandardColor, Xyza,
+    color_difference::EuclideanDistance, impl_componentwise_vector_space, impl_const_color_ops,
+    ColorToComponents, ColorToPacked, Gray, LinearRgba, Luminance, StandardColor, Xyza,
 };
 #[cfg(feature = "alloc")]
 use alloc::{format, string::String};
@@ -41,6 +41,8 @@ pub struct Srgba {
 impl StandardColor for Srgba {}
 
 impl_componentwise_vector_space!(Srgba, [red, green, blue, alpha]);
+
+impl_const_color_ops!(Srgba, [red, green, blue]);
 
 impl Srgba {
     // The standard VGA colors, with alpha set to 1.0.
@@ -141,7 +143,100 @@ impl Srgba {
         Self { blue, ..self }
     }
 
+    /// New `Srgba` from a CSS-style hexadecimal string, in a `const` context.
+    ///
+    /// Equivalent to [`Srgba::hex`] for valid CSS hex strings; `hex` accepts any
+    /// `AsRef<str>` and therefore cannot be `const`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use bevy_color::Srgba;
+    /// const FUCHSIA: Srgba = match Srgba::from_hex("FF00FF") {
+    ///     Ok(color) => color,
+    ///     Err(_) => panic!("invalid color"),
+    /// };
+    /// assert_eq!(FUCHSIA, Srgba::new(1.0, 0.0, 1.0, 1.0));
+    /// ```
+    #[inline]
+    pub const fn from_hex(hex: &str) -> Result<Self, HexColorError> {
+        let bytes = hex.as_bytes();
+        let offset = if !bytes.is_empty() && bytes[0] == b'#' {
+            1
+        } else {
+            0
+        };
+        let digits = bytes.len() - offset;
+
+        // Digits are 3, 4, 6, or 8: short forms repeat each nibble.
+        let (step, has_alpha) = match digits {
+            3 => (1, false),
+            4 => (1, true),
+            6 => (2, false),
+            8 => (2, true),
+            _ => return Err(HexColorError::Length),
+        };
+        let red = match hex_channel(bytes, offset, step) {
+            Ok(value) => value,
+            Err(error) => return Err(error),
+        };
+        let green = match hex_channel(bytes, offset + step, step) {
+            Ok(value) => value,
+            Err(error) => return Err(error),
+        };
+        let blue = match hex_channel(bytes, offset + 2 * step, step) {
+            Ok(value) => value,
+            Err(error) => return Err(error),
+        };
+        let alpha = if has_alpha {
+            match hex_channel(bytes, offset + 3 * step, step) {
+                Ok(value) => value,
+                Err(error) => return Err(error),
+            }
+        } else {
+            255
+        };
+        Ok(Self::rgba_u8(red, green, blue, alpha))
+    }
+
+    /// New `Srgba` from a CSS-style hexadecimal string, panicking on invalid input.
+    ///
+    /// This is the `const`-friendly counterpart of `Srgba::from_hex(hex).unwrap()`, which
+    /// cannot be written in a `const` context because `Result::unwrap` is not `const`. In a
+    /// `const` item, a malformed string fails the build with a const-evaluation error.
+    /// At runtime it panics, so prefer [`Srgba::from_hex`] for user-supplied input.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `hex` is not a valid CSS-style hexadecimal color, either because of its
+    /// length or because it contains an invalid character.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use bevy_color::Srgba;
+    /// const FUCHSIA: Srgba = Srgba::from_hex_or_panic("FF00FF");
+    /// assert_eq!(FUCHSIA, Srgba::new(1.0, 0.0, 1.0, 1.0));
+    /// ```
+    ///
+    /// Invalid input fails to compile:
+    ///
+    /// ```compile_fail
+    /// # use bevy_color::Srgba;
+    /// const INVALID: Srgba = Srgba::from_hex_or_panic("nope!");
+    /// ```
+    #[inline]
+    pub const fn from_hex_or_panic(hex: &str) -> Self {
+        match Self::from_hex(hex) {
+            Ok(color) => color,
+            Err(HexColorError::Length) => panic!("invalid hex color: unexpected length"),
+            Err(HexColorError::Char(_)) => panic!("invalid hex color: invalid character"),
+        }
+    }
+
     /// New `Srgba` from a CSS-style hexadecimal string.
+    ///
+    /// See [`Srgba::from_hex`] for the `const` equivalent.
     ///
     /// # Examples
     ///
@@ -154,39 +249,7 @@ impl Srgba {
     /// assert_eq!(Srgba::hex("#FFFFFF").unwrap(), Srgba::new(1.0, 1.0, 1.0, 1.0));
     /// ```
     pub fn hex<T: AsRef<str>>(hex: T) -> Result<Self, HexColorError> {
-        let hex = hex.as_ref();
-        let hex = hex.strip_prefix('#').unwrap_or(hex);
-
-        match hex.len() {
-            // RGB
-            3 => {
-                let [l, b] = u16::from_str_radix(hex, 16)?.to_be_bytes();
-                let (r, g, b) = (l & 0x0F, (b & 0xF0) >> 4, b & 0x0F);
-                Ok(Self::rgb_u8((r << 4) | r, (g << 4) | g, (b << 4) | b))
-            }
-            // RGBA
-            4 => {
-                let [l, b] = u16::from_str_radix(hex, 16)?.to_be_bytes();
-                let (r, g, b, a) = ((l & 0xF0) >> 4, l & 0xF, (b & 0xF0) >> 4, b & 0x0F);
-                Ok(Self::rgba_u8(
-                    (r << 4) | r,
-                    (g << 4) | g,
-                    (b << 4) | b,
-                    (a << 4) | a,
-                ))
-            }
-            // RRGGBB
-            6 => {
-                let [_, r, g, b] = u32::from_str_radix(hex, 16)?.to_be_bytes();
-                Ok(Self::rgb_u8(r, g, b))
-            }
-            // RRGGBBAA
-            8 => {
-                let [r, g, b, a] = u32::from_str_radix(hex, 16)?.to_be_bytes();
-                Ok(Self::rgba_u8(r, g, b, a))
-            }
-            _ => Err(HexColorError::Length),
-        }
+        Self::from_hex(hex.as_ref())
     }
 
     /// Convert this color to CSS-style hexadecimal notation.
@@ -256,36 +319,6 @@ impl Luminance for Srgba {
     fn lighter(&self, amount: f32) -> Self {
         let linear: LinearRgba = (*self).into();
         linear.lighter(amount).into()
-    }
-}
-
-impl Mix for Srgba {
-    #[inline]
-    fn mix(&self, other: &Self, factor: f32) -> Self {
-        let n_factor = 1.0 - factor;
-        Self {
-            red: self.red * n_factor + other.red * factor,
-            green: self.green * n_factor + other.green * factor,
-            blue: self.blue * n_factor + other.blue * factor,
-            alpha: self.alpha * n_factor + other.alpha * factor,
-        }
-    }
-}
-
-impl Alpha for Srgba {
-    #[inline]
-    fn with_alpha(&self, alpha: f32) -> Self {
-        Self { alpha, ..*self }
-    }
-
-    #[inline]
-    fn alpha(&self) -> f32 {
-        self.alpha
-    }
-
-    #[inline]
-    fn set_alpha(&mut self, alpha: f32) {
-        self.alpha = alpha;
     }
 }
 
@@ -427,17 +460,79 @@ impl From<Srgba> for wgpu_types::Color {
     }
 }
 
+/// Decode the character starting at `at`.
+///
+/// The bytes come from a `&str`, so every error is at a character boundary and this is exact.
+/// The fallback only exists to keep the function total; `from_hex` never reaches it.
+const fn char_at(bytes: &[u8], at: usize) -> char {
+    const REPLACEMENT: char = char::REPLACEMENT_CHARACTER;
+
+    let first = bytes[at];
+    let (len, mut code) = if first < 0x80 {
+        return first as char;
+    } else if first & 0xE0 == 0xC0 {
+        (2, (first & 0x1F) as u32)
+    } else if first & 0xF0 == 0xE0 {
+        (3, (first & 0x0F) as u32)
+    } else if first & 0xF8 == 0xF0 {
+        (4, (first & 0x07) as u32)
+    } else {
+        return REPLACEMENT;
+    };
+    if at + len > bytes.len() {
+        return REPLACEMENT;
+    }
+    let mut i = 1;
+    while i < len {
+        let continuation = bytes[at + i];
+        if continuation & 0xC0 != 0x80 {
+            return REPLACEMENT;
+        }
+        code = (code << 6) | (continuation & 0x3F) as u32;
+        i += 1;
+    }
+    match char::from_u32(code) {
+        Some(character) => character,
+        None => REPLACEMENT,
+    }
+}
+
+/// Decode a single hexadecimal digit at `at`.
+const fn hex_digit(bytes: &[u8], at: usize) -> Result<u8, HexColorError> {
+    let byte = bytes[at];
+    match byte {
+        b'0'..=b'9' => Ok(byte - b'0'),
+        b'a'..=b'f' => Ok(byte - b'a' + 10),
+        b'A'..=b'F' => Ok(byte - b'A' + 10),
+        _ => Err(HexColorError::Char(char_at(bytes, at))),
+    }
+}
+
+/// Decode one channel: a pair of digits when `step` is 2, else one repeated digit.
+const fn hex_channel(bytes: &[u8], at: usize, step: usize) -> Result<u8, HexColorError> {
+    let high = match hex_digit(bytes, at) {
+        Ok(value) => value,
+        Err(error) => return Err(error),
+    };
+    if step == 2 {
+        let low = match hex_digit(bytes, at + 1) {
+            Ok(value) => value,
+            Err(error) => return Err(error),
+        };
+        Ok((high << 4) | low)
+    } else {
+        Ok((high << 4) | high)
+    }
+}
+
 /// Error returned if a hex string could not be parsed as a color.
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum HexColorError {
-    /// Parsing error.
-    #[error("Invalid hex string")]
-    Parse(#[from] core::num::ParseIntError),
     /// Invalid length.
     #[error("Unexpected length of hex string")]
     Length,
     /// Invalid character.
-    #[error("Invalid hex char")]
+    #[error("Invalid hex character '{0}'")]
     Char(char),
 }
 
@@ -515,7 +610,31 @@ mod tests {
         assert_eq!(Srgba::hex("12345678"), Ok(Srgba::rgba_u8(18, 52, 86, 120)));
         assert_eq!(Srgba::hex("4321"), Ok(Srgba::rgba_u8(68, 51, 34, 17)));
 
-        assert!(matches!(Srgba::hex("yyy"), Err(HexColorError::Parse(_))));
-        assert!(matches!(Srgba::hex("##fff"), Err(HexColorError::Parse(_))));
+        assert!(matches!(Srgba::hex("yyy"), Err(HexColorError::Char('y'))));
+        assert!(matches!(Srgba::hex("##fff"), Err(HexColorError::Char('#'))));
+    }
+
+    #[test]
+    fn hex_in_const() {
+        const FUCHSIA: Srgba = match Srgba::from_hex("#FF00FF") {
+            Ok(color) => color,
+            Err(_) => panic!("invalid color"),
+        };
+        const TRANSLUCENT: Srgba = match Srgba::from_hex("FF00FF7F") {
+            Ok(color) => color,
+            Err(_) => panic!("invalid color"),
+        };
+        assert_eq!(FUCHSIA, Srgba::rgb_u8(255, 0, 255));
+        assert_eq!(TRANSLUCENT, Srgba::rgba_u8(255, 0, 255, 127));
+        assert_eq!(Srgba::from_hex("nope!"), Err(HexColorError::Length));
+        assert_eq!(Srgba::from_hex("#12g456"), Err(HexColorError::Char('g')));
+        assert_eq!(Srgba::from_hex("+fff"), Err(HexColorError::Char('+')));
+        assert_eq!(Srgba::from_hex("ééé"), Err(HexColorError::Char('é')));
+    }
+
+    #[test]
+    #[should_panic(expected = "invalid hex color: invalid character")]
+    fn from_hex_or_panic_on_invalid_character() {
+        let _ = Srgba::from_hex_or_panic("nope");
     }
 }

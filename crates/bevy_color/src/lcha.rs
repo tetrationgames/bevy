@@ -1,6 +1,6 @@
 use crate::{
-    Alpha, ColorToComponents, Gray, Hue, Laba, LinearRgba, Luminance, Mix, Srgba, StandardColor,
-    Xyza,
+    impl_const_color_ops, ColorToComponents, Gray, Laba, LinearRgba, Luminance, Srgba,
+    StandardColor, Xyza,
 };
 use bevy_math::{ops, Vec3, Vec4};
 #[cfg(feature = "bevy_reflect")]
@@ -34,6 +34,8 @@ pub struct Lcha {
 }
 
 impl StandardColor for Lcha {}
+
+impl_const_color_ops!(Lcha, [lightness, chroma], hue);
 
 impl Lcha {
     /// Construct a new [`Lcha`] color from components.
@@ -115,56 +117,9 @@ impl Default for Lcha {
     }
 }
 
-impl Mix for Lcha {
-    #[inline]
-    fn mix(&self, other: &Self, factor: f32) -> Self {
-        let n_factor = 1.0 - factor;
-        Self {
-            lightness: self.lightness * n_factor + other.lightness * factor,
-            chroma: self.chroma * n_factor + other.chroma * factor,
-            hue: crate::color_ops::lerp_hue(self.hue, other.hue, factor),
-            alpha: self.alpha * n_factor + other.alpha * factor,
-        }
-    }
-}
-
 impl Gray for Lcha {
     const BLACK: Self = Self::new(0.0, 0.0, 0.0000136603785, 1.0);
     const WHITE: Self = Self::new(1.0, 0.0, 0.0000136603785, 1.0);
-}
-
-impl Alpha for Lcha {
-    #[inline]
-    fn with_alpha(&self, alpha: f32) -> Self {
-        Self { alpha, ..*self }
-    }
-
-    #[inline]
-    fn alpha(&self) -> f32 {
-        self.alpha
-    }
-
-    #[inline]
-    fn set_alpha(&mut self, alpha: f32) {
-        self.alpha = alpha;
-    }
-}
-
-impl Hue for Lcha {
-    #[inline]
-    fn with_hue(&self, hue: f32) -> Self {
-        Self { hue, ..*self }
-    }
-
-    #[inline]
-    fn hue(&self) -> f32 {
-        self.hue
-    }
-
-    #[inline]
-    fn set_hue(&mut self, hue: f32) {
-        self.hue = hue;
-    }
 }
 
 impl Luminance for Lcha {

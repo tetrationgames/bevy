@@ -18,7 +18,6 @@ use bevy_camera::{
     visibility::{RenderLayers, ViewVisibility},
     Camera, Projection, RenderTarget,
 };
-use bevy_color::Alpha;
 use bevy_ecs::prelude::*;
 use bevy_image::{prelude::*, TextureAccessError};
 use bevy_log::warn;

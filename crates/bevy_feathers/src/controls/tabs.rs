@@ -1,5 +1,5 @@
 use bevy_app::{Plugin, PostUpdate, Propagate};
-use bevy_color::{Alpha, Srgba};
+use bevy_color::Srgba;
 use bevy_ecs::{
     component::Component,
     entity::Entity,
@@ -998,6 +998,7 @@ mod tests {
     use super::*;
     use bevy_app::{App, TaskPoolPlugin};
     use bevy_asset::{AssetApp, AssetPlugin};
+    use bevy_color::Alpha;
     use bevy_picking::events::DragEntry;
     use bevy_scene::{ScenePlugin, WorldSceneExt};
     use bevy_ui::widget::Text;

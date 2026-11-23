@@ -1,6 +1,6 @@
 use crate::{
-    color_difference::EuclideanDistance, Alpha, ColorToComponents, Gray, Hsla, Hsva, Hue, Hwba,
-    Laba, Lcha, LinearRgba, Luminance, Mix, Oklaba, Srgba, StandardColor, Xyza,
+    color_difference::EuclideanDistance, impl_const_color_ops, ColorToComponents, Gray, Hsla, Hsva,
+    Hwba, Laba, Lcha, LinearRgba, Luminance, Oklaba, Srgba, StandardColor, Xyza,
 };
 use bevy_math::{ops, FloatPow, Vec3, Vec4};
 #[cfg(feature = "bevy_reflect")]
@@ -34,6 +34,8 @@ pub struct Oklcha {
 }
 
 impl StandardColor for Oklcha {}
+
+impl_const_color_ops!(Oklcha, [lightness, chroma], hue);
 
 impl Oklcha {
     /// Construct a new [`Oklcha`] color from components.
@@ -110,56 +112,9 @@ impl Default for Oklcha {
     }
 }
 
-impl Mix for Oklcha {
-    #[inline]
-    fn mix(&self, other: &Self, factor: f32) -> Self {
-        let n_factor = 1.0 - factor;
-        Self {
-            lightness: self.lightness * n_factor + other.lightness * factor,
-            chroma: self.chroma * n_factor + other.chroma * factor,
-            hue: crate::color_ops::lerp_hue(self.hue, other.hue, factor),
-            alpha: self.alpha * n_factor + other.alpha * factor,
-        }
-    }
-}
-
 impl Gray for Oklcha {
     const BLACK: Self = Self::new(0., 0., 0., 1.);
     const WHITE: Self = Self::new(1.0, 0.000000059604645, 90.0, 1.0);
-}
-
-impl Alpha for Oklcha {
-    #[inline]
-    fn with_alpha(&self, alpha: f32) -> Self {
-        Self { alpha, ..*self }
-    }
-
-    #[inline]
-    fn alpha(&self) -> f32 {
-        self.alpha
-    }
-
-    #[inline]
-    fn set_alpha(&mut self, alpha: f32) {
-        self.alpha = alpha;
-    }
-}
-
-impl Hue for Oklcha {
-    #[inline]
-    fn with_hue(&self, hue: f32) -> Self {
-        Self { hue, ..*self }
-    }
-
-    #[inline]
-    fn hue(&self) -> f32 {
-        self.hue
-    }
-
-    #[inline]
-    fn set_hue(&mut self, hue: f32) {
-        self.hue = hue;
-    }
 }
 
 impl Luminance for Oklcha {

@@ -82,7 +82,7 @@ use alloc::borrow::Cow;
 use alloc::string::String;
 use alloc::sync::Arc;
 use bevy_clipboard::ClipboardRead;
-use bevy_color::{Alpha, Color};
+use bevy_color::Color;
 use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::{prelude::*, reflect::ReflectComponent};
 use bevy_math::Vec2;
